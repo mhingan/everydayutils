@@ -1,12 +1,5 @@
-# Maven
 target/
 *.jar
 *.class
-
-# IDE
 .idea/
 *.iml
-
-# Sistem
-.DS_Store
-Thumbs.db
