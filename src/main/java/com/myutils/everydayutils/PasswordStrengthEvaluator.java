@@ -1,6 +1,10 @@
 package com.myutils.everydayutils;
 
 import java.io.*;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.Random;
 
 /**
@@ -29,7 +33,7 @@ public class PasswordStrengthEvaluator {
         boolean hasSpecialChar = password.contains("@") || password.contains("&") || password.contains("!");
         int length = password.length();
 
-        boolean isCommon = isCommon("10-million-password-list-top-10000.txt", password);
+        boolean isCommon = isCommon(password);
 
         if (!isCommon && length >= 8 && length < 30 && hasUppercase && hasLowercase && hasSpecialChar) {
             return "Password strength level: MAX";
@@ -47,27 +51,45 @@ public class PasswordStrengthEvaluator {
         return "Unable to determine password strength.";
     }
 
-    /**
-     * Checks if a given password is found in a file containing common passwords.
-     *
-     * @param fileName the path to the file containing common passwords
-     * @param password the password to check
-     * @return true if the password is found in the file, false otherwise
-     * @throws IOException if there is a problem reading the file
-     */
-    private static boolean isCommon(String fileName, String password) throws IOException {
-        BufferedReader reader = new BufferedReader(new FileReader(fileName));
-        String line;
 
-        while ((line = reader.readLine()) != null) {
-            if (line.equals(password)) {
-                reader.close();
-                return true;
+        /**
+         * Checks whether a given password appears in a list of the most common passwords,
+         * retrieved from a remote public file on GitHub. The comparison is exact, line by line.
+         *
+         * @param password the password to check
+         * @return true if the password is exactly matched in the list, false otherwise
+         * @throws RuntimeException if there is an error reading the remote password file
+         */
+        public static boolean isCommon(String password) {
+            String fileUrl = "https://raw.githubusercontent.com/danielmiessler/SecLists/refs/heads/master/Passwords/Common-Credentials/10-million-password-list-top-1000000.txt";
+
+            try {
+                HttpClient client = HttpClient.newHttpClient();
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(fileUrl))
+                        .build();
+
+                HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
+
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(response.body()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        if (line.equals(password)) {
+                            return true;
+                        }
+                    }
+                }
+
+            } catch (Exception e) {
+                throw new RuntimeException("Error reading the common passwords file.", e);
             }
+
+            return false;
         }
-        reader.close();
-        return false;
-    }
+
+
+
+
 
     /**
      * Suggests a secure random password of a specified length,
